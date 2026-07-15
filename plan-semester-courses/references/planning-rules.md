@@ -23,6 +23,20 @@ Choose only enough elective courses to satisfy the Handbook's stated `requiredUn
 
 Do not select the whole major-elective catalogue. Do not infer an elective count from the number of returned courses.
 
+## 2a. Fill Free Electives
+
+Treat a Handbook requirement as a Free Elective requirement when its exact `coursePattern` is `FE(ALL)` or `FE(<subjectCode>)`, such as `FE(SAI)`.
+
+- Call `list_free_elective_courses` with the code inside the pattern: `ALL` for `FE(ALL)`, `SAI` for `FE(SAI)`, and so on.
+- Match the exact classification. `FE(ALL)` means the `FE(ALL)` catalogue; it is not a request to merge every `FE(...)` classification unless the Handbook explicitly provides multiple patterns.
+- Read all pages when `hasMore` is true. `courseCodePrefix` and `nameContains` are literal filters, not semantic search.
+- Use the returned courses as the candidate pool, then query their exact course codes with `get_course_offerings` for the target calendar term.
+- Select only enough Free Elective courses to satisfy the Handbook's stated units or slots. Do not recommend the entire catalogue.
+- A course's `FE(...)` classification is CourseDB evidence, but it does not validate prerequisites, exclusions, or the student's graduation eligibility.
+- If a course is classified as both `ME(...)` and `FE(...)`, preserve both facts and avoid double-counting it unless the Handbook or selection system explicitly permits that use.
+
+Do not use `list_major_elective_courses` as a substitute for an `FE(...)` query. A major-elective catalogue is not automatically a Free Elective catalogue.
+
 ## 3. Add other courses last
 
 After anchors and major electives are stable, consider remaining Handbook requirements or explicit student requests. Keep these in a separate “other courses” section so the student can see which choices are central to the major and which are supplementary.

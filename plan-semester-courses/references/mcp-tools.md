@@ -43,11 +43,11 @@ The result contains:
 The Handbook study-term code is not an Offering season. Use the separate calendar term for `get_course_offerings`:
 
 | `studyTermCode` | CourseDB label |
-| --- | --- |
-| `1` | Fall (Sem 1) |
-| `2` | Winter |
-| `3` | Spring (Sem 2) |
-| `4` | Summer |
+| --------------- | -------------- |
+| `1`             | Fall (Sem 1)   |
+| `2`             | Winter         |
+| `3`             | Spring (Sem 2) |
+| `4`             | Summer         |
 
 ## `list_major_elective_courses`
 
@@ -74,6 +74,41 @@ The result includes `courses[]` with course code, bilingual name, units, departm
 
 Do not treat the entire returned catalogue as the student's selected courses. Use it as the candidate pool for an elective requirement, then inspect Offering sessions.
 
+## `list_free_elective_courses`
+
+Use this when the Handbook contains a Free Elective course pattern or the student explicitly asks for Free Elective candidates. The classification is read from the current course-version `type` field and is matched as a complete `FE(...)` entry.
+
+Example for all courses classified as `FE(ALL)`:
+
+```json
+{
+  "subjectCode": "ALL",
+  "page": 1,
+  "pageSize": 50
+}
+```
+
+Example for the subject-specific `FE(SAI)` catalogue:
+
+```json
+{
+  "subjectCode": "SAI",
+  "page": 1,
+  "pageSize": 50
+}
+```
+
+Optional filters are the same deterministic filters as the major-elective tool:
+
+- `courseCodePrefix`: literal course-code prefix.
+- `nameContains`: literal English course-name substring.
+- `page`: starts at `1`.
+- `pageSize`: maximum `100`, default `50`.
+
+The result includes `subjectCode`, `classificationPattern` such as `FE(ALL)` or `FE(SAI)`, `classificationSource`, `courses[]`, `total`, `hasMore`, `page`, and `pageSize`. Each course contains only planning fields: course code, bilingual name, units, department, faculty, prerequisite text, exclusion text, and description.
+
+`FE(ALL)` is matched as the exact `FE(ALL)` classification. It does not automatically combine `FE(SAI)` or other subject-specific classifications. If the Handbook lists multiple `FE(...)` patterns, query each exact pattern and deduplicate course codes before checking Offerings. This tool lists a classification catalogue; it does not prove that a course is offered in the target term, that prerequisites are satisfied, or that it may be double-counted toward another requirement.
+
 ## `get_course_offerings`
 
 Use this with explicit course codes and the actual calendar term:
@@ -99,6 +134,8 @@ Each session may include:
 - display `schedule` text;
 - lecturer names;
 - `timeSlots[]` with `day`, `startMinutes`, `endMinutes`, raw time, and location fields.
+
+Use the selected session fields to build the final Timetable JSON described in [references/timetable-json.md](timetable-json.md). The Timetable import format uses a deterministic synthetic entry ID; no database offering ID is required.
 
 For FYP (Final Year Project) or equivalent project-based courses, a `FOUND` session may legitimately have no `timeSlots` because the work is arranged through project or supervisor meetings. Preserve the Offering result and label the timetable as project-arranged rather than treating it as an ordinary missing timetable.
 

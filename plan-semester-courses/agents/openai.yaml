@@ -1,4 +1,4 @@
 interface:
   display_name: "Plan Semester Courses"
   short_description: "Use CourseDB MCP tools to plan a student's semester courses."
-  default_prompt: "Use $plan-semester-courses to ask for my program code, admission year, study year, and target term, then use Handbook, elective, and Offering data to draft a semester plan."
+  default_prompt: "Use $plan-semester-courses to ask for my program code, admission year, study year, and target term, then use Handbook, major-elective, Free Elective, and Offering data to draft a semester plan."

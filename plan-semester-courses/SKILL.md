@@ -1,16 +1,15 @@
 ---
 name: plan-semester-courses
-description: Plan one student's semester courses with the CourseDB read-only MCP tools, including Handbook requirements, major-elective candidates, Offering sessions, timetable conflicts, and follow-up checks for exact course codes. Use when a student asks what to take for a semester, wants to use a Handbook, needs major elective choices, or wants to compare a new course against an existing plan. Ask for the student's program, admission year, and current study year before planning.
-compatibility: Requires an MCP client connected to the CourseDB /api/mcp endpoint and a valid DEV API Key.
+description: Plan one student's semester courses with the CourseDB read-only MCP tools, including Handbook requirements, major-elective and free-elective candidates, Offering sessions, timetable conflicts, and a final CourseDB Timetable-importable JSON plan. Use when a student asks what to take for a semester, wants to use a Handbook, needs elective choices, or wants to compare a new course against an existing plan. Ask for the student's program, admission year, and current study year before planning.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Plan Semester Courses
 
 Use this skill to turn a student's Handbook requirements and course Offering data into a clearly explained, provisional semester plan. The MCP server provides facts; the skill performs the ordering, filtering, schedule comparison, and explanation. Do not write to a Planner or claim official academic approval.
 
-Read [references/mcp-tools.md](references/mcp-tools.md) before making tool calls. Read [references/program-code-map.md](references/program-code-map.md) when the student gives a program name instead of a code or asks about abbreviations. Read [references/ge-programme.md](references/ge-programme.md) when the Handbook contains a GE requirement or the student asks about GE courses. Read [references/course-code-expansion-map.md](references/course-code-expansion-map.md) when an Offering lookup returns `NO_RECORD`, the student provides an `800X`-style code, or a course code may need a known concrete variant. Read [references/planning-rules.md](references/planning-rules.md) before selecting courses.
+Read [references/mcp-tools.md](references/mcp-tools.md) before making tool calls. Read [references/program-code-map.md](references/program-code-map.md) when the student gives a program name instead of a code or asks about abbreviations. Read [references/ge-programme.md](references/ge-programme.md) when the Handbook contains a GE requirement or the student asks about GE courses. Read [references/course-code-expansion-map.md](references/course-code-expansion-map.md) when an Offering lookup returns `NO_RECORD`, the student provides an `800X`-style code, or a course code may need a known concrete variant. Read [references/planning-rules.md](references/planning-rules.md) before selecting courses. Read [references/timetable-json.md](references/timetable-json.md) before producing the final response.
 
 ## Keep planning state across follow-ups
 
@@ -23,6 +22,7 @@ Maintain the current planning context during the conversation:
 - Actual Offering calendar year and season.
 - Selected or provisional anchor sessions.
 - Elective candidates already checked and unresolved requirements.
+- The selected sessions that will become Timetable JSON entries.
 
 When the student asks a follow-up about a course, session, or conflict, reuse this context. Do not repeat the Handbook and full elective-pool queries unless the student changes the cohort, target term, program, or planning assumptions. Query only the new exact course codes needed for the follow-up.
 
@@ -60,19 +60,24 @@ Do not guess when multiple program codes could match a name. Ask the student to 
 
    - Anchor courses: fixed `REQUIRED` or `CORE` requirements with a concrete course.
    - Major electives: an unfilled `ELECTIVE` requirement or courses listed by `ME(<programCode>)`.
+   - Free electives: a requirement whose exact course pattern is `FE(ALL)` or `FE(<subjectCode>)`, such as `FE(SAI)`.
    - GE requirements: preserve the exact GE level and category, such as `History and Civilization`, `Science, Technology and Society`, or `Experiential Learning`.
    - Other courses: remaining Handbook requirements or courses the student explicitly asks to consider outside the major-elective list.
 
 3. Call `list_major_elective_courses` with the resolved program code only when the Handbook has a major-elective/elective slot that may use this pool, or when the student explicitly asks for major-elective candidates. Read every page when the result has `hasMore: true`. Use `courseCodePrefix` or `nameContains` only as literal database filters. Do not describe this as semantic search.
 
-4. Build an exact candidate course-code list. Start with anchor courses, then add only the major-elective candidates relevant to the unresolved requirement, then add other courses. Do not make a small arbitrary “probe” call followed by a full call when the candidate pool is already known; batch the exact codes in one Offering request when there are at most 50. If more than 50 exact codes must be checked, split into chunks of 50.
+4. Call `list_free_elective_courses` when the Handbook exposes an `FE(...)` requirement or when the student explicitly asks for Free Elective candidates. Pass the exact code inside the pattern: `FE(ALL)` uses `subjectCode: "ALL"`; `FE(SAI)` uses `subjectCode: "SAI"`. Read every page when the result has `hasMore: true`. This is an exact course-type catalogue, not a semantic search and not a proof that every returned course satisfies every other Handbook category.
 
-5. Call `get_course_offerings` for the candidate course codes and the explicit calendar term. Send at most 50 course codes per call and split into multiple calls when necessary. Query every candidate when the student asks which candidates are offered; otherwise filter to a small, explainable shortlist before calling.
-6. After every Offering response, collect all `NO_RECORD` results. For a concrete course listed in the Handbook as `REQUIRED`, `CORE`, or a fixed alternative, this is a blocking follow-up: consult the expansion map and query every mapped concrete variant before writing the plan. Do not treat the original `NO_RECORD` as final until this check is complete.
+5. Build an exact candidate course-code list. Start with anchor courses, then add major-elective candidates, then Free Elective candidates, then other courses. Include only candidates relevant to the unresolved requirement or the student's explicit request. Do not make a small arbitrary “probe” call followed by a full call when the candidate pool is already known; batch the exact codes in one Offering request when there are at most 50. If more than 50 exact codes must be checked, split into chunks of 50.
 
-7. Choose at most one session for each selected course. Prefer sessions with complete time and location data. Compare sessions for same-day overlaps before finalizing the plan.
+6. Call `get_course_offerings` for the candidate course codes and the explicit calendar term. Send at most 50 course codes per call and split into multiple calls when necessary. Query every candidate when the student asks which candidates are offered; otherwise filter to a small, explainable shortlist before calling.
+7. After every Offering response, collect all `NO_RECORD` results. For a concrete course listed in the Handbook as `REQUIRED`, `CORE`, or a fixed alternative, this is a blocking follow-up: consult the expansion map and query every mapped concrete variant before writing the plan. Do not treat the original `NO_RECORD` as final until this check is complete.
 
-8. Present the plan in the required order: anchor major courses first, major electives second, and other courses last. Explain rejected candidates and unresolved data briefly.
+8. Choose at most one session for each selected course. Prefer sessions with complete time and location data. Compare sessions for same-day overlaps before finalizing the plan.
+
+9. Present the plan in the required order: anchor major courses first, major electives second, Free Electives third, and other courses last. Explain rejected candidates and unresolved data briefly.
+
+10. End the response with a `Timetable JSON` section. Generate the JSON for the primary recommended plan using the exact schema in `references/timetable-json.md`. The JSON must use the actual Offering `calendarYear` and `calendarSeason`, include only selected sessions, and remain valid if a course has no fixed timetable because it is an FYP/project course.
 
 Never finalize a plan while a Handbook-fixed course has an unchecked `NO_RECORD` expansion. For example, `CHI1103` with no direct Offering requires a follow-up Offering query for the mapped `CHI11038002` before reporting that the course is unavailable.
 
@@ -107,12 +112,14 @@ Do not restart the entire planning workflow for a local follow-up. Preserve the 
 Follow the detailed rules in [references/planning-rules.md](references/planning-rules.md). In particular:
 
 - Anchor the fixed major courses before considering electives.
+- Within the elective stage, resolve major electives before Free Electives, then add other courses.
 - Select only the number of elective courses needed to satisfy the Handbook's stated units or slots unless the student asks for alternatives.
 - Use Offering data to choose a session, not merely to assert that a course exists.
 - Check time-slot overlap using day and minute ranges. A missing or unparsable time is an uncertainty, not proof of no conflict.
 - FYP (Final Year Project) courses generally do not have a fixed teaching timetable. If an FYP course has no `timeSlots`, keep it in the plan and label its timetable as project/supervisor-arranged; do not treat the missing time as either a conflict or proof of no conflict.
 - Add other courses only after anchor and elective choices are stable.
 - Preserve multiple viable plans when session conflicts make the choice subjective.
+- End the final response with strict Timetable-importable JSON. Keep conflicts, unresolved records, requirement labels, and alternatives outside the JSON object.
 
 Do not use `search_planning_courses`; it is not an available capability and the system has no natural-language search service. If the student expresses a topic such as “AI-related”, inspect the returned course names and descriptions as an Agent-level interpretation, and say that it is a best-effort interpretation rather than an exhaustive search result.
 
@@ -152,7 +159,7 @@ Label these as Agent reasoning:
 - Whether a schedule is the most balanced or convenient option.
 - Interpretation of prerequisite text when the data is not machine-validated.
 
-The `ME(<programCode>)` catalogue is evidence that a course is classified as a major elective. It is not by itself proof that the course can fill a `Free Elective`, `GE`, `WPEX`, or another Handbook category. Label such a course as a candidate and preserve the eligibility uncertainty unless the Handbook or selection system explicitly establishes the mapping.
+The `ME(<programCode>)` catalogue is evidence that a course is classified as a major elective. It is not by itself proof that the course can fill a `Free Elective`, `GE`, `WPEX`, or another Handbook category. The `FE(ALL)` and `FE(<subjectCode>)` catalogues are evidence of their exact Free Elective classification, not proof that a course satisfies a different Handbook category or that the student has met prerequisites. Label each course as a candidate and preserve the eligibility uncertainty unless the Handbook or selection system explicitly establishes the mapping.
 
 Treat `NO_RECORD` for a concrete course from `get_course_offerings` as “CourseDB has no record for this course and term”. For any original course code, consult the expansion map before reporting the unresolved result; only mapped variants may be queried. Do not say that the school definitively cancelled or will not offer the course. Treat raw prerequisite and exclusion text as unverified unless the tool explicitly provides a validated result.
 
@@ -173,7 +180,9 @@ Recommended plan
    - Course code — course name — requirement source/status — selected session — time
 2. Major electives
    - Course code — course name — requirement source/status — why it fits — selected session — time
-3. Other courses
+3. Free Electives
+   - Course code — course name — `FE(ALL)` or `FE(<subjectCode>)` source — selected session — time
+4. Other courses
    - Course code — course name — requirement source/status — selected session — time
 
 Checks and uncertainties
