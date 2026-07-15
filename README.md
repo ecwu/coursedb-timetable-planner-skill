@@ -1,82 +1,100 @@
 # CourseDB Timetable Planner Skill
 
-这是一个用于规划学生学期课程的 Agent Skill。它通过 CourseDB 的只读 MCP 工具读取 Handbook、专业选修课程和 Offering，再按“专业必修 → 专业选修 → 其他课程”的顺序生成一个临时课表建议。
+这是一个通过 CourseDB 只读 MCP 数据规划学期课程的 Agent Skill。它会读取 Handbook、专业选修、Free Elective 和 Offering，检查 session 时间冲突，并生成可导入 CourseDB Timetable 的 JSON 计划。
 
-仓库：[ecwu/coursedb-timetable-planner-skill](https://github.com/ecwu/coursedb-timetable-planner-skill)
+本 Skill 不会修改 CourseDB Planner，也不能代替学校确认先修要求、毕业资格或最终选课结果。
 
-本 Skill 不会修改 CourseDB 中的 Planner，也不会代替学校确认先修要求、毕业资格或最终选课结果。
+## 仓库结构
+
+这个仓库是 Skill 仓库，真正的 Skill 位于 `plan-semester-courses/` 子目录，而不是仓库根目录：
+
+```text
+coursedb-timetable-planner-skill/
+├── README.md
+├── LICENSE
+└── plan-semester-courses/
+    ├── SKILL.md
+    ├── agents/
+    │   └── openai.yaml
+    └── references/
+        ├── course-code-expansion-map.md
+        ├── ge-programme.md
+        ├── history-and-exclusions.md
+        ├── mcp-tools.md
+        ├── planning-rules.md
+        ├── program-code-map.md
+        └── timetable-json.md
+```
 
 ## 功能
 
-- 根据专业代码、入学年份、年级和目标学期读取 Handbook 要求。
-- 查询专业选修课程池。
-- 查询课程在指定学年学期的 Offering 和 session。
-- 检查已选 session 的时间冲突。
-- 支持 GE 课程的 Level 1、Level 2、Level 3 规则。
-- 处理 Handbook 固定课程的已知课程编号变体，例如 `CHI1103 → CHI11038002`。
-- 识别 FYP（Final Year Project）通常没有固定授课时间的情况。
+- 根据专业、入学年份、Handbook 年级和学期读取培养方案要求。
+- 查询专业选修和 `FE(...)` Free Elective 候选课程。
+- 排除已修、在修或之前已规划的课程，避免重复推荐。
+- 查询指定日历学期的 Offering、session、时间和地点。
+- 检查所选 session 之间的时间冲突。
+- 处理 GE Level 1、Level 2 和 Level 3 分类规则。
+- 处理 `CHI1103 -> CHI11038002` 等已知课程编号变体。
+- 正确标记通常没有固定上课时间的 FYP 或项目课程。
+- 输出可导入 CourseDB Timetable 的 JSON。
 
-## 目录结构
-
-```text
-.
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-└── references/
-    ├── course-code-expansion-map.md
-    ├── ge-programme.md
-    ├── mcp-tools.md
-    ├── planning-rules.md
-    └── program-code-map.md
-```
-
-## 使用前提
+## 快速开始
 
 需要准备：
 
-1. 一个可以连接远程 MCP 的 Agent 客户端，例如 OpenCode。
-2. CourseDB 的 `/api/mcp` 地址。
-3. 一个有效的 CourseDB Developer API Key。
-4. CourseDB 管理后台已开启 MCP 全局开关。
+1. Node.js 18 或更高版本，用于运行 [`skills`](https://github.com/vercel-labs/skills) CLI。
+2. 支持 Agent Skills 和远程 MCP 的客户端，例如 OpenCode。
+3. CourseDB Developer Access 和一个有效的 Developer API Key。
+4. CourseDB 管理后台已开启 MCP 服务。
 
-MCP 只提供读取操作，目前的工具包括：
+### 1. 安装 Skill
 
-- `get_handbook_term_requirements`
-- `list_major_elective_courses`
-- `get_course_offerings`
+推荐使用 Vercel Labs 的 `skills` CLI。它可以直接识别本仓库中的 `plan-semester-courses/SKILL.md`，不需要把 `SKILL.md` 移到仓库根目录。
 
-## 安装 Skill
-
-### 方式一：克隆 GitHub 仓库
+安装到当前项目的 OpenCode：
 
 ```bash
-git clone https://github.com/ecwu/coursedb-timetable-planner-skill.git \
-  ~/.config/opencode/coursedb-timetable-planner-skill
+npx skills add ecwu/coursedb-timetable-planner-skill \
+  --skill plan-semester-courses \
+  --agent opencode \
+  --yes
 ```
 
-这个仓库的根目录应直接包含 `SKILL.md`。如果你把仓库作为更大的 Skill 集合使用，则让 OpenCode 指向包含各个 Skill 子目录的父目录。
+项目级安装默认写入当前项目的 `.agents/skills/`，适合与项目一起提交和共享。
 
-### 方式二：本地项目目录
+安装为 OpenCode 全局 Skill：
 
-如果 Skill 位于当前项目的 `skills/plan-semester-courses`，可以让 OpenCode 指向：
-
-```text
-./skills
+```bash
+npx skills add ecwu/coursedb-timetable-planner-skill \
+  --skill plan-semester-courses \
+  --agent opencode \
+  --global \
+  --yes
 ```
 
-具体配置见下一节。
+全局安装位置是 `~/.config/opencode/skills/`，可在所有项目中使用。
 
-## OpenCode 配置
+只查看仓库中可安装的 Skill，不执行安装：
 
-OpenCode 对远程 HTTP MCP 使用 `"type": "remote"`。不要写成 `stdio`、`sse` 或 `streamableHttp`。远程 MCP 的 HTTP 传输由 OpenCode 自动处理。
+```bash
+npx skills add ecwu/coursedb-timetable-planner-skill --list
+```
 
-在项目根目录创建 `opencode.json`，或者修改 OpenCode 的全局配置：
+也可以使用完整 GitHub URL：
+
+```bash
+npx skills add https://github.com/ecwu/coursedb-timetable-planner-skill \
+  --skill plan-semester-courses \
+  --agent opencode
+```
+
+### 2. 配置 CourseDB MCP
+
+`skills` CLI 只安装 Skill 文件，不会添加 MCP 地址或 API Key。请在项目根目录的 `opencode.json` 中配置 CourseDB MCP，或把相同配置合并到全局的 `~/.config/opencode/opencode.json`：
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "skills": ["~/.config/opencode/coursedb-timetable-planner-skill"],
   "mcp": {
     "coursedb": {
       "type": "remote",
@@ -90,117 +108,103 @@ OpenCode 对远程 HTTP MCP 使用 `"type": "remote"`。不要写成 `stdio`、`
 }
 ```
 
-如果 Skill 是当前项目中的目录，使用：
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "skills": ["./skills"],
-  "mcp": {
-    "coursedb": {
-      "type": "remote",
-      "url": "https://mis.bnbu.moe/api/mcp",
-      "enabled": true,
-      "headers": {
-        "Authorization": "Bearer {env:COURSEDB_DEV_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-OpenCode 的配置支持 `{env:VARIABLE_NAME}` 环境变量引用。不要把真实 API Key 写进 `opencode.json`，也不要提交到 GitHub。
-
-启动 OpenCode 前设置环境变量：
+设置环境变量后再启动 OpenCode：
 
 ```bash
 export COURSEDB_DEV_API_KEY="<YOUR_DEV_API_KEY>"
 opencode
 ```
 
+不要把真实 API Key 写入 `opencode.json`、提交到 GitHub，或放进 URL 查询参数。修改 Skill 或 OpenCode 配置后，需要重启 OpenCode 才会加载新配置。
 
-本地环境还需要先启动 CourseDB：
+### 3. 开始规划
 
-```bash
-pnpm dev
+在 OpenCode 中输入：
+
+```text
+我想规划 2026 Fall 的课程。
+我的专业是 CST，2024 年入学，目标是 Handbook Year 3 Term 1。
+我已经修完 COMP1001 和 MATH1001，请读取 Handbook 和 Offering，
+按专业必修、专业选修、Free Elective、其他课程的顺序规划，并输出 Timetable JSON。
 ```
 
-不要直接在浏览器中打开 MCP URL。MCP 客户端需要使用 POST JSON-RPC 请求，并在每次请求中携带 API Key。
+为了避免重复选课，首次规划时请提供以下信息：
 
-## 在 CourseDB 注册 Developer
-`
-### 1. 登录 CourseDB
+- 专业名称或准确的 program code。
+- 入学年份，即 Handbook cohort year。
+- 目标 Handbook study year 和 term。
+- Offering 对应的实际日历学期，例如 `2026 Fall`。
+- 已修、在修和之前已规划的课程；也可以提供之前导出的 Timetable JSON。
 
-先登录 CourseDB，然后打开：
+## 不使用 `skills` CLI
+
+如果希望保留仓库的本地 clone，可以让 OpenCode 直接扫描仓库根目录。注意 `skills` 的配置值是包含 `paths` 的对象，不是字符串数组：
+
+```bash
+git clone https://github.com/ecwu/coursedb-timetable-planner-skill.git \
+  ~/.config/opencode/coursedb-timetable-planner-skill
+```
+
+然后在 `opencode.json` 中加入：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [
+      "~/.config/opencode/coursedb-timetable-planner-skill"
+    ]
+  }
+}
+```
+
+OpenCode 会递归发现其中的 `plan-semester-courses/SKILL.md`。也可以把路径直接写到 Skill 子目录：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [
+      "~/.config/opencode/coursedb-timetable-planner-skill/plan-semester-courses"
+    ]
+  }
+}
+```
+
+如果 clone 就在当前项目中，可以使用相对于 `opencode.json` 的路径，例如 `"./coursedb-timetable-planner-skill"`。MCP 配置仍需按上一节单独添加。
+
+## 获取 CourseDB API Key
+
+### 1. 申请 Developer Access
+
+登录 CourseDB 后打开：
 
 ```text
 https://mis.bnbu.moe/account/developer
 ```
 
-页面名称是 **Developer Platform / 开发者平台**。
-
-### 2. 提交开发者权限申请
-
-在“申请”页签填写使用场景并提交。申请理由至少需要 20 个字符，建议说明：
-
-- 准备用什么客户端调用，例如 OpenCode。
-- 计划使用哪些只读能力，例如 Handbook、专业选修和 Offering 查询。
-- 使用范围，例如帮助学生规划某个学期的课程。
-- 不会执行写入、选课或修改 Planner 的操作。
-
-> 提交申请要求至少贡献过一条课程评价。
+在 **Developer Platform / 开发者平台** 的申请页填写使用场景并提交。申请理由至少需要 20 个字符，且提交申请要求至少贡献过一条课程评价。建议说明使用的客户端、需要的只读能力和用途。
 
 示例：
 
 ```text
-I am integrating CourseDB with OpenCode to help students plan a semester using read-only Handbook, major-elective, and Offering data.
+I am integrating CourseDB with OpenCode to help students plan a semester using read-only Handbook, elective, and Offering data.
 ```
 
-提交后状态会变成 **Pending review / 待审核**。审核期间不能重复提交申请。
+### 2. 创建 API Key
 
-### 3. 等待审核通过
+管理员审核通过后：
 
-管理员审核通过后，账户会获得 Developer Access。状态会显示为 **Developer enabled / 已开通开发者权限**。
+1. 打开 API Key 管理页签。
+2. 填写 Key 名称，例如 `opencode-timetable-planner`。
+3. 可选填写过期天数，然后创建 Key。
+4. 立即保存完整 API Key。
 
-如果申请被拒绝或撤销，可以根据审核备注修改使用场景后重新提交。
+完整 Key 只会展示一次。CourseDB 之后只显示 Key 前缀，不会保存可恢复的明文 Key。
 
-### 4. 创建 API Key
+## 验证 MCP 连接
 
-审核通过后进入“API Key 管理”页签：
-
-1. 填写 Key 名称，例如 `opencode-timetable-planner`。
-2. 可选填写过期天数。
-3. 点击创建。
-4. 立即复制完整 API Key。
-
-完整 Key 只会展示一次。CourseDB 只保存 Key 的哈希值，之后页面只能看到 Key 前缀。
-
-把 Key 设置为环境变量：
-
-```bash
-export COURSEDB_DEV_API_KEY="<COPIED_API_KEY>"
-```
-
-不要把 Key 放在：
-
-- GitHub 仓库。
-- `opencode.json`。
-- URL 查询参数，例如 `?apiKey=...`。
-- 截图、Issue 或聊天记录。
-
-### 5. 确认系统开关
-
-要让 MCP 正常工作，需要同时满足：
-
-- CourseDB 管理后台的 MCP 全局开关已开启。
-- API Key 没有过期或被撤销。
-- API Key 所属账户仍然拥有 Developer Access。
-
-如果 MCP 全局开关关闭，接口会返回 `410 Gone`。如果 Developer API 暂停，接口可能返回 `503`。API Key 缺失或无效时会返回 `401`。
-
-## 验证连接
-
-可以先用 `curl` 验证 MCP 服务是否返回 JSON：
+可以用初始化请求确认 MCP 服务和 API Key 是否可用：
 
 ```bash
 curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
@@ -210,47 +214,44 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
 ```
 
-预期结果：
+常见结果：
 
 - `200`：MCP 初始化成功。
 - `401`：API Key 缺失、无效、过期或已撤销。
-- `410`：MCP 全局开关关闭。
+- `410`：CourseDB MCP 全局开关关闭。
 - `503`：Developer API 暂停或关闭。
-- HTML 页面：通常表示 URL 错误、服务未启动、路由未部署，或请求被代理到网页路由。
+- 返回 HTML：通常是 URL 错误、路由未部署，或请求被转发到了网页路由。
 
-## 使用示例
+不要直接在浏览器中打开 MCP URL。MCP 客户端使用带认证信息的 POST JSON-RPC 请求。
 
-配置完成后，可以在 OpenCode 中直接提出类似请求：
+## MCP 工具
 
-```text
-我想规划 2026 Fall 的课程。
-我的专业是 CST，2024 年入学，现在大三。
-请先读取 Handbook，再按专业必修、专业选修、其他课程的顺序规划。
-```
+当前 Skill 使用以下只读工具：
 
-Skill 会首先确认：
+- `get_handbook_term_requirements`
+- `list_major_elective_courses`
+- `list_free_elective_courses`
+- `get_course_offerings`
 
-- 专业和专业代码。
-- 入学年份。
-- 当前年级。
-- 目标日历学期。
-
-之后通过 MCP 查询 Handbook 和 Offering，并把事实、推断、时间冲突和未确认事项分开说明。
+工具只提供 CourseDB 中的事实数据。课程排序、历史课程排除、候选筛选和冲突检查由 Skill 完成。
 
 ## 安全与限制
 
 - MCP 工具是只读的，不会创建或修改 Planner。
-- API Key 应使用最小权限和合理过期时间。
+- API Key 应使用合理的过期时间，并且只保存在环境变量或安全的密钥管理工具中。
+- CourseDB MCP 当前不能自动读取任意学生的私人修课历史，因此用户需要主动提供历史课程。
 - 课程是否满足先修要求不能仅凭文本自动确认。
 - `NO_RECORD` 只表示 CourseDB 当前没有对应学期记录，不代表学校一定不开课。
-- FYP（Final Year Project）通常没有固定授课时间；没有 `timeSlots` 时应标记为项目/导师安排，而不是普通时间冲突。
+- FYP 通常没有固定授课时间；缺少 `timeSlots` 时应标记为项目或导师安排，而不是普通时间冲突。
 
 ## 相关文档
 
+- [`skills` CLI](https://github.com/vercel-labs/skills)
+- [OpenCode Skills](https://opencode.ai/docs/skills/)
 - [OpenCode MCP Servers](https://opencode.ai/docs/mcp-servers/)
-- [OpenCode configuration](https://opencode.ai/docs/config/)
+- [OpenCode Configuration](https://opencode.ai/docs/config/)
 - [Agent Skills specification](https://agentskills.io/specification)
-- [CourseDB MCP Skill](SKILL.md)
-- [MCP tool reference](references/mcp-tools.md)
-- [GE programme reference](references/ge-programme.md)
-- [Course-code expansion map](references/course-code-expansion-map.md)
+- [Skill instructions](plan-semester-courses/SKILL.md)
+- [MCP tool reference](plan-semester-courses/references/mcp-tools.md)
+- [Planning rules](plan-semester-courses/references/planning-rules.md)
+- [Timetable JSON format](plan-semester-courses/references/timetable-json.md)
