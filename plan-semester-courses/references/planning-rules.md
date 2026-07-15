@@ -2,6 +2,15 @@
 
 Apply these rules after loading the Handbook and before recommending sessions.
 
+## 0. Establish historical exclusions first
+
+Before selecting from any ME/FE catalogue, read `references/history-and-exclusions.md` and establish the student's completed, earlier planned/enrolled, reattemptable, and uncertain course sets.
+
+- Exclude completed or attended courses before judging their relevance, topic fit, classification, or Offering. A course can be both an earlier major-required course and a current `FE(ALL)` candidate; its history still makes it unavailable for the new plan.
+- Exclude earlier planned/enrolled courses by default when the earlier plan precedes the target term. Keep this separate from proof of completion.
+- Do not hard-exclude failed, withdrawn, or dropped courses without the student's confirmation.
+- If the student has not provided history and the target contains elective slots, do not turn an elective catalogue entry into a final recommendation or a fully confirmed timetable JSON.
+
 ## 1. Anchor major courses first
 
 Treat a Handbook requirement as an anchor when:

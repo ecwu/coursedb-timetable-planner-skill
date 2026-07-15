@@ -25,7 +25,7 @@ Create one entry for each selected course/session in the recommended plan:
 ```json
 {
   "id": "COMP2001-1001",
-  "label": "COMP2001 1001",
+  "label": "COMP2001 1001 - Example Course",
   "courseCode": "COMP2001",
   "courseNameEn": "Example Course",
   "schedule": "Mon 10:00-11:50; Wed 10:00-11:50",
@@ -47,8 +47,8 @@ Create one entry for each selected course/session in the recommended plan:
 Rules:
 
 - `id` must be a deterministic string unique within the JSON. Use `<courseCode>-<session>`, replacing whitespace in the session with `-` when needed. Do not use a random ID.
-- `label` should be `<courseCode> <session>`.
-- `courseNameEn` comes from the Offering course name when available. Omit it only when the name is unavailable.
+- `label` should be `<courseCode> <session> - <courseNameEn>` so the course remains identifiable in Timetable's sidebar and collision messages.
+- `courseNameEn` must come from the Offering course name whenever it is available. If the Offering name is missing, use the best available course name from the Handbook or elective catalogue; only omit it when every source lacks a name.
 - `schedule` must always be a string. Use the Offering `schedule`, or `""` when it is null or unavailable.
 - Copy `timeSlots` from the selected Offering session. Preserve `sequence`, `day`, `startMinutes`, `endMinutes`, `rawTime`, `location`, and `locations` when present. A null day or time is valid uncertainty; do not invent a time.
 - `colorIndex` is a finite number. Assign `0, 1, 2, ...` in the order of entries, wrapping after the available palette if necessary.

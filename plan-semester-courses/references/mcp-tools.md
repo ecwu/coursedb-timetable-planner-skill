@@ -10,6 +10,7 @@ Use these tools through the connected MCP server. Do not use shell commands or i
 - If the system MCP gate is off, the endpoint returns HTTP `410 Gone` with code `MCP_DISABLED`.
 - If the broader Developer API mode is disabled, the existing Developer API gate may return HTTP `503`.
 - Tool failures are MCP tool errors. Treat them as facts about the request failure, not as course-planning results.
+- The current MCP tools do not read an arbitrary student's completed-course history or private Planner. Ask the student for prior course codes, earlier plans, or an exported Timetable JSON before making final ME/FE selections; see [history-and-exclusions.md](history-and-exclusions.md).
 
 ## `get_handbook_term_requirements`
 
@@ -131,6 +132,7 @@ For each requested course, the result contains either:
 Each session may include:
 
 - `session` identifier, such as `A` or `B`;
+- course name under `courseName.en` / `courseName.zh`;
 - display `schedule` text;
 - lecturer names;
 - `timeSlots[]` with `day`, `startMinutes`, `endMinutes`, raw time, and location fields.

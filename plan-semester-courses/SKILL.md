@@ -1,15 +1,15 @@
 ---
 name: plan-semester-courses
-description: Plan one student's semester courses with the CourseDB read-only MCP tools, including Handbook requirements, major-elective and free-elective candidates, Offering sessions, timetable conflicts, and a final CourseDB Timetable-importable JSON plan. Use when a student asks what to take for a semester, wants to use a Handbook, needs elective choices, or wants to compare a new course against an existing plan. Ask for the student's program, admission year, and current study year before planning.
+description: Plan one student's semester courses with the CourseDB read-only MCP tools, including historical-course exclusions, Handbook requirements, major-elective and free-elective candidates, Offering sessions, timetable conflicts, and a final CourseDB Timetable-importable JSON plan. Use when a student asks what to take for a semester, wants to use a Handbook, needs elective choices, or wants to compare a new course against an existing plan. Ask for the student's program, admission year, current study year, and prior-course context before planning.
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Plan Semester Courses
 
 Use this skill to turn a student's Handbook requirements and course Offering data into a clearly explained, provisional semester plan. The MCP server provides facts; the skill performs the ordering, filtering, schedule comparison, and explanation. Do not write to a Planner or claim official academic approval.
 
-Read [references/mcp-tools.md](references/mcp-tools.md) before making tool calls. Read [references/program-code-map.md](references/program-code-map.md) when the student gives a program name instead of a code or asks about abbreviations. Read [references/ge-programme.md](references/ge-programme.md) when the Handbook contains a GE requirement or the student asks about GE courses. Read [references/course-code-expansion-map.md](references/course-code-expansion-map.md) when an Offering lookup returns `NO_RECORD`, the student provides an `800X`-style code, or a course code may need a known concrete variant. Read [references/planning-rules.md](references/planning-rules.md) before selecting courses. Read [references/timetable-json.md](references/timetable-json.md) before producing the final response.
+Read [references/mcp-tools.md](references/mcp-tools.md) before making tool calls. Read [references/program-code-map.md](references/program-code-map.md) when the student gives a program name instead of a code or asks about abbreviations. Read [references/ge-programme.md](references/ge-programme.md) when the Handbook contains a GE requirement or the student asks about GE courses. Read [references/course-code-expansion-map.md](references/course-code-expansion-map.md) when an Offering lookup returns `NO_RECORD`, the student provides an `800X`-style code, or a course code may need a known concrete variant. Read [references/history-and-exclusions.md](references/history-and-exclusions.md) before selecting any ME/FE candidate. Read [references/planning-rules.md](references/planning-rules.md) before selecting courses. Read [references/timetable-json.md](references/timetable-json.md) before producing the final response.
 
 ## Keep planning state across follow-ups
 
@@ -23,6 +23,7 @@ Maintain the current planning context during the conversation:
 - Selected or provisional anchor sessions.
 - Elective candidates already checked and unresolved requirements.
 - The selected sessions that will become Timetable JSON entries.
+- Historical course status and exclusion sets: completed, prior planned/enrolled, reattemptable, and uncertain.
 
 When the student asks a follow-up about a course, session, or conflict, reuse this context. Do not repeat the Handbook and full elective-pool queries unless the student changes the cohort, target term, program, or planning assumptions. Query only the new exact course codes needed for the follow-up.
 
@@ -34,6 +35,7 @@ Ask for these facts before calling the Handbook tool:
 - Admission/cohort year.
 - Current study year, such as year 1, 2, 3, or 4.
 - Target calendar term for the Offering lookup, such as `2026 Fall`.
+- Courses already completed, currently enrolled in, or planned in earlier terms; an exported earlier Timetable JSON is also acceptable.
 
 Keep the Handbook term and actual calendar Offering term separate:
 
@@ -64,9 +66,11 @@ Do not guess when multiple program codes could match a name. Ask the student to 
    - GE requirements: preserve the exact GE level and category, such as `History and Civilization`, `Science, Technology and Society`, or `Experiential Learning`.
    - Other courses: remaining Handbook requirements or courses the student explicitly asks to consider outside the major-elective list.
 
-3. Call `list_major_elective_courses` with the resolved program code only when the Handbook has a major-elective/elective slot that may use this pool, or when the student explicitly asks for major-elective candidates. Read every page when the result has `hasMore: true`. Use `courseCodePrefix` or `nameContains` only as literal database filters. Do not describe this as semantic search.
+Before calling either elective catalogue tool, read [references/history-and-exclusions.md](references/history-and-exclusions.md), collect the student's prior-course context, and build the exclusion sets. If history is missing, do not make an ME/FE course a final recommendation; only present it as an unfiltered candidate and state the limitation.
 
-4. Call `list_free_elective_courses` when the Handbook exposes an `FE(...)` requirement or when the student explicitly asks for Free Elective candidates. Pass the exact code inside the pattern: `FE(ALL)` uses `subjectCode: "ALL"`; `FE(SAI)` uses `subjectCode: "SAI"`. Read every page when the result has `hasMore: true`. This is an exact course-type catalogue, not a semantic search and not a proof that every returned course satisfies every other Handbook category.
+3. Call `list_major_elective_courses` with the resolved program code only when the Handbook has a major-elective/elective slot that may use this pool, or when the student explicitly asks for major-elective candidates. Read every page when the result has `hasMore: true`. Use `courseCodePrefix` or `nameContains` only as literal database filters. Do not describe this as semantic search. Remove historical exclusions before selecting from the returned pool.
+
+4. Call `list_free_elective_courses` when the Handbook exposes an `FE(...)` requirement or when the student explicitly asks for Free Elective candidates. Pass the exact code inside the pattern: `FE(ALL)` uses `subjectCode: "ALL"`; `FE(SAI)` uses `subjectCode: "SAI"`. Read every page when the result has `hasMore: true`. This is an exact course-type catalogue, not a semantic search and not a proof that every returned course satisfies every other Handbook category. Remove historical exclusions before selecting from the returned pool, even when a previously completed required course is also classified as FE.
 
 5. Build an exact candidate course-code list. Start with anchor courses, then add major-elective candidates, then Free Elective candidates, then other courses. Include only candidates relevant to the unresolved requirement or the student's explicit request. Do not make a small arbitrary “probe” call followed by a full call when the candidate pool is already known; batch the exact codes in one Offering request when there are at most 50. If more than 50 exact codes must be checked, split into chunks of 50.
 
@@ -77,7 +81,7 @@ Do not guess when multiple program codes could match a name. Ask the student to 
 
 9. Present the plan in the required order: anchor major courses first, major electives second, Free Electives third, and other courses last. Explain rejected candidates and unresolved data briefly.
 
-10. End the response with a `Timetable JSON` section. Generate the JSON for the primary recommended plan using the exact schema in `references/timetable-json.md`. The JSON must use the actual Offering `calendarYear` and `calendarSeason`, include only selected sessions, and remain valid if a course has no fixed timetable because it is an FYP/project course.
+10. End the response with a `Timetable JSON` section. Generate the JSON for the primary recommended plan using the exact schema in `references/timetable-json.md`. Every entry must include the course name in both `courseNameEn` and the human-readable `label` whenever a name is available. The JSON must use the actual Offering `calendarYear` and `calendarSeason`, include only selected sessions, and remain valid if a course has no fixed timetable because it is an FYP/project course. If historical data is missing, include only verified fixed-anchor sessions and state outside the JSON that the export is incomplete and elective selection is pending history confirmation.
 
 Never finalize a plan while a Handbook-fixed course has an unchecked `NO_RECORD` expansion. For example, `CHI1103` with no direct Offering requires a follow-up Offering query for the mapped `CHI11038002` before reporting that the course is unavailable.
 
@@ -172,6 +176,7 @@ Planning context
 - Program and code:
 - Admission/cohort year:
 - Current study year:
+- History source/status:
 - Target Handbook study year and term:
 - Offering term:
 
@@ -187,6 +192,10 @@ Recommended plan
 
 Checks and uncertainties
 - Handbook units covered:
+- Historical exclusions applied and their source/status:
+- Completed courses excluded:
+- Earlier planned/enrolled courses excluded:
+- Reattemptable or uncertain courses:
 - Known time conflicts:
 - FYP/project courses without fixed teaching times:
 - Offering records not found:
