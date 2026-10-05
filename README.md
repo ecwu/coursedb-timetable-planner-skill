@@ -1,6 +1,6 @@
 # CourseDB Timetable Planner Skill
 
-这是一个通过 CourseDB 只读 MCP 数据规划学期课程的 Agent Skill。它会读取 Handbook、专业选修、Free Elective 和 Offering，检查 session 时间冲突，并生成可导入 CourseDB Timetable 的 JSON 计划。
+这是一个通过 CourseDB 只读 MCP 数据规划学期课程的 Agent Skill。它会读取 Handbook、专业选修、Free Elective 和 Offering，检查 session 时间冲突，并生成有效期为 24 小时的课表预览链接。预览工具不可用时，返回可导入 CourseDB Timetable 的 JSON 计划。
 
 本 Skill 不会修改 CourseDB Planner，也不能代替学校确认先修要求、毕业资格或最终选课结果。
 
@@ -280,3 +280,13 @@ Timetable 导出保留 `version:2` 格式，条目 ID 使用实际 session ID。
 - [Timetable JSON format](plan-semester-courses/references/timetable-json.md)
 
 详细示例：[规划示例与异常处理](plan-semester-courses/references/planning-examples.md)。
+
+### 临时课表预览
+
+`create_timetable_preview` 接收 `{requestId, name, data}`。`data` 使用原有 Timetable JSON 格式。工具返回预览链接、到期时间和剩余额度。
+
+持链接者无需登录即可查看。登录用户可保存个人副本，随后编辑。预览创建后保留 24 小时。每个 API key 所属用户在滚动 24 小时内最多创建 20 张，所有 key 共用额度。正式副本继续受每人 25 张的限制。
+
+预览工具失败或不可用时，Skill 返回 JSON 供手动导入。完整 MCP 请求上限为 64 KiB，不会静默截断内容。临时内容使用 Redis，数据丢失时链接可能提前失效。
+
+上线前确认 Redis 容量和淘汰策略适合临时业务存储。观察创建、额度拒绝和保存失败的服务日志，不记录正文或链接 token。

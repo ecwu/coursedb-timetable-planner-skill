@@ -1,6 +1,6 @@
 # Timetable import JSON
 
-End the planning response with strict JSON for the primary recommendation. Keep coverage, conflicts, alternatives, and unresolved records outside the JSON.
+Build strict JSON for the primary recommendation. Submit it to `create_timetable_preview` when that tool is available. Return the link and expiry on success. If creation fails, return the strict JSON for manual import. Keep coverage, conflicts, alternatives, and unresolved records outside the JSON.
 
 ## Calendar term and entries
 

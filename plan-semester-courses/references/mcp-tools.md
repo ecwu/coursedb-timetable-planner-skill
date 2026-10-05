@@ -17,7 +17,7 @@ The HTTP headers `MCP-Protocol-Version` and `Mcp-Method` must match the request.
 }
 ```
 
-Read `structuredContent` first. If a client only exposes text content, parse its JSON. An `isError` result is a failed read, not `NO_RECORD` or an empty catalogue. HTTP `401`, `403`, `410`, `429`, and `503` indicate access, enablement, or rate-limit failures. Keep retrieved facts and explain the incomplete read.
+Read `structuredContent` first. If a client only exposes text content, parse its JSON. An `isError` result indicates a failed operation. For query tools, it does not mean `NO_RECORD` or an empty catalogue. HTTP `401`, `403`, `410`, `429`, and `503` indicate access, enablement, or rate-limit failures. Keep retrieved facts and explain the incomplete read.
 
 These tools do not read a student's private history or Planner. A developer key identifies the integration, not the student.
 
@@ -153,3 +153,13 @@ Keep raw requirements and remarks visible when they affect a choice. They do not
 Only modern Offering tables supply these results. Empty data never falls back to legacy tables or course-version `type`. `NO_RECORD` does not prove cancellation.
 
 For mapped codes, read [course-code-expansion-map.md](course-code-expansion-map.md). A mapping supports a lookup, not automatic equivalence. Use real session IDs in [Timetable JSON](timetable-json.md).
+
+## `create_timetable_preview`
+
+After selecting the primary recommendation, build the Timetable object under [the JSON rules](timetable-json.md). Call the tool with `{requestId, name, data}`. Generate a UUID for `requestId`. Reuse it with identical arguments for a retry.
+
+The tool returns `structuredContent` with `previewUrl`, `expiresAt`, and `remaining`. The link works for 24 hours after creation. Anyone with the link can preview it. A signed-in viewer can save a personal copy and then edit that copy. The tool does not save a personal timetable or enroll courses.
+
+All keys belonging to one user share 20 successful creations per rolling 24 hours. Reads and retries do not extend expiry. The full MCP request must fit within 64 KiB. Do not truncate data to fit the request.
+
+`INVALID_TIMETABLE` includes field paths. `PREVIEW_REQUEST_CONFLICT` means that the same UUID was used with different content. `PREVIEW_QUOTA_EXCEEDED` includes `retryAfterSeconds`. `PREVIEW_STORAGE_UNAVAILABLE` means that storage failed. Keep the JSON fallback when creation fails. Never work around a quota by changing keys.

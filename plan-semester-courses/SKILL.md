@@ -1,8 +1,8 @@
 ---
 name: plan-semester-courses
-description: Plan a student's semester with CourseDB read-only MCP tools, Handbook requirements, course history, current course details, elective classifications, and Offering sessions. Use for semester choices, elective comparisons, and conflicts with an existing plan. Return a provisional recommendation and CourseDB Timetable import JSON.
+description: Plan a student's semester from CourseDB facts and course history. Compare requirements, elective choices, and timetable conflicts. Return a provisional recommendation and a temporary preview link. Use Timetable import JSON when preview creation fails.
 metadata:
-  version: "2.0"
+  version: "2.1"
 ---
 
 # Plan Semester Courses
@@ -63,4 +63,8 @@ Describe the planning context, recommended courses and sessions, requirement cov
 
 If history is missing, keep electives as candidates. Export only verified fixed-anchor sessions and explain that elective selection remains pending.
 
-End the response with strict Timetable JSON for the primary recommendation. Use real session IDs and the actual calendar term. Keep uncertainties and alternatives outside the JSON. Follow the import limits in the export reference.
+Build strict Timetable JSON for the primary recommendation. Use real session IDs and the actual calendar term. Keep uncertainties and alternatives outside the JSON. Follow the import limits in the export reference.
+
+If `create_timetable_preview` is available, generate a UUID for `requestId`. Call the tool with this UUID, a short name, and the Timetable object as `data`. Reuse the UUID and identical arguments for a retry. Return the preview link and expiry on success. Explain that anyone with the link can view the draft. A signed-in user can save a personal copy. Do not claim that the tool saves to an account.
+
+If the tool is unavailable or fails, explain the failure and return the strict import JSON. Do not retry a quota error with another UUID or key.
