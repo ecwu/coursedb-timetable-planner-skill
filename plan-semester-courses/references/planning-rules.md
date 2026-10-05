@@ -6,7 +6,7 @@ Apply these rules after loading the Handbook and before recommending sessions.
 
 Before selecting from any ME/FE catalogue, read `references/history-and-exclusions.md` and establish the student's completed, earlier planned/enrolled, reattemptable, and uncertain course sets.
 
-- Exclude completed or attended courses before judging their relevance, topic fit, classification, or Offering. A course can be both an earlier major-required course and a current `FE(ALL)` candidate; its history still makes it unavailable for the new plan.
+- Exclude completed courses before judging their relevance, topic fit, classification, or Offering. A course can be both an earlier major-required course and a current `FE(ALL)` candidate; its history still makes it unavailable for the new plan.
 - Exclude earlier planned/enrolled courses by default when the earlier plan precedes the target term. Keep this separate from proof of completion.
 - Do not hard-exclude failed, withdrawn, or dropped courses without the student's confirmation.
 - If the student has not provided history and the target contains elective slots, do not turn an elective catalogue entry into a final recommendation or a fully confirmed timetable JSON.
@@ -26,7 +26,7 @@ If a requirement has `alternatives`, keep the alternatives visible. Do not silen
 
 Treat a requirement as an elective slot when it is an `ELECTIVE` requirement without a fixed course, or when its course catalogue is represented by `coursePattern`.
 
-Use `list_major_elective_courses` with the resolved major code to obtain the candidate pool. The current classification source is a course-version type such as `ME(CST)`; it is a major elective catalogue, not a proof that every course is permitted in every cohort's exact Handbook.
+Use `list_major_elective_courses` with the resolved major code to obtain the candidate pool. The classification source is the latest classified Offering term, such as `ME(CST)`. Use the results as candidates. The classification does not establish permission under a specific cohort's Handbook.
 
 Choose only enough elective courses to satisfy the Handbook's stated `requiredUnits` or number of slots. If multiple courses satisfy the same slot, compare their descriptions, units, prerequisite text, Offering sessions, and the student's stated interests. Keep a small set of alternatives when the choice is subjective.
 
@@ -66,7 +66,7 @@ For every course that may enter the final plan:
 
 1. Query its Offering data for the actual calendar year and season.
 2. Discard no course solely because the record is missing; mark it `NO_RECORD` and explain the uncertainty.
-3. For `FOUND` courses, compare all returned sessions.
+3. For `FOUND` courses, complete truncated results with `list_course_offering_sessions` before claiming full comparison.
 4. Choose at most one session per course.
 5. Prefer a session with complete day, start, end, and location data when other factors are comparable.
 6. Preserve alternatives when two sessions are both viable.
@@ -79,7 +79,7 @@ When a candidate pool is already known, do not first test a few arbitrary course
 
 - Courses identified as FYP (Final Year Project) or an equivalent final-year project generally do not have a fixed teaching timetable.
 - A `FOUND` FYP Offering with no `timeSlots` is not missing schedule data by itself. Keep the course as offered, mark it as “project/supervisor-arranged; no fixed class time”, and do not discard it.
-- Do not report a missing FYP timetable as a known time conflict or as proof that the course has no conflict. The timetable status is “not applicable/unknown”; the student should confirm supervisor or project-meeting arrangements separately.
+- Do not report a missing FYP timetable as a known time conflict or as proof that the course has no conflict. The timetable status is unknown. Ask the student to confirm supervisor or project-meeting arrangements.
 - If the course has explicit `timeSlots`, use those slots in the normal conflict calculation.
 
 ## 5. Detect known time conflicts
@@ -91,7 +91,9 @@ first.startMinutes < second.endMinutes
 and second.startMinutes < first.endMinutes
 ```
 
-Report the course codes, sessions, day, and overlap window. If either time is missing or represented only by unparsed raw text, report “conflict status unknown” rather than assuming no overlap.
+Report the course codes, sessions, day, and overlap window. Adjacent intervals do not conflict.
+
+Only compare recognized weekdays and integer minute ranges within 0 to 1440, with end later than start. Unknown weekdays and invalid ranges leave conflict status unknown. If explicit slots are absent, retain raw schedule text and its uncertainty. Do not infer times from ambiguous text. If either time is missing or represented only by unparsed raw text, report “conflict status unknown” rather than assuming no overlap.
 
 Do not compare different calendar terms as if they were in the same timetable. Do not treat a shared location as a conflict by itself.
 
@@ -99,7 +101,10 @@ For a follow-up conflict question, preserve the selected/provisional anchor sess
 
 ## 6. Check units and prerequisites carefully
 
-- Sum selected course `units` and compare the result with the Handbook's required units for the target term.
+- Read `get_course_details` for selected codes to confirm current units. Sum those units separately from Handbook required units.
+- Preserve differences between current course units and Handbook required units. Query concrete variants separately. A mapped base code does not supply variant units.
+- Distinguish latest classified-term course metadata from target-session `typeTokens`. If target classification is missing or conflicts, keep elective fulfillment pending.
+- Count a course toward a requirement only when its mapping has support. Do not count a course twice without explicit rules.
 - Do not turn a system workload suggestion into an institutional rule.
 - Present `prerequisiteText` and `exclusionText` as source text.
 - Do not claim that the student satisfies prerequisites unless a separate validated service provides that result.

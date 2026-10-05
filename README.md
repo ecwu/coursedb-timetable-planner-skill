@@ -21,6 +21,7 @@ coursedb-timetable-planner-skill/
         ├── ge-programme.md
         ├── history-and-exclusions.md
         ├── mcp-tools.md
+        ├── planning-examples.md
         ├── planning-rules.md
         ├── program-code-map.md
         └── timetable-json.md
@@ -31,7 +32,8 @@ coursedb-timetable-planner-skill/
 - 根据专业、入学年份、Handbook 年级和学期读取培养方案要求。
 - 查询专业选修和 `FE(...)` Free Elective 候选课程。
 - 排除已修、在修或之前已规划的课程，避免重复推荐。
-- 查询指定日历学期的 Offering、session、时间和地点。
+- 补查具体课程的当前学分、双语名称、先修与分类学期。
+- 查询指定日历学期的 Offering、session、时间和地点，继续读取被截断的 session。
 - 检查所选 session 之间的时间冲突。
 - 处理 GE Level 1、Level 2 和 Level 3 分类规则。
 - 处理 `CHI1103 -> CHI11038002` 等已知课程编号变体。
@@ -43,7 +45,7 @@ coursedb-timetable-planner-skill/
 需要准备：
 
 1. Node.js 18 或更高版本，用于运行 [`skills`](https://github.com/vercel-labs/skills) CLI。
-2. 支持 Agent Skills 和远程 MCP 的客户端，例如 OpenCode。
+2. 支持 Agent Skills 和 MCP `2026-07-28` 协议的客户端。OpenCode 配置示例仅说明地址与鉴权，使用前需确认客户端支持该协议。
 3. CourseDB Developer Access 和一个有效的 Developer API Key。
 4. CourseDB 管理后台已开启 MCP 服务。
 
@@ -151,9 +153,7 @@ git clone https://github.com/ecwu/coursedb-timetable-planner-skill.git \
 {
   "$schema": "https://opencode.ai/config.json",
   "skills": {
-    "paths": [
-      "~/.config/opencode/coursedb-timetable-planner-skill"
-    ]
+    "paths": ["~/.config/opencode/coursedb-timetable-planner-skill"]
   }
 }
 ```
@@ -204,19 +204,21 @@ I am integrating CourseDB with OpenCode to help students plan a semester using r
 
 ## 验证 MCP 连接
 
-可以用初始化请求确认 MCP 服务和 API Key 是否可用：
+可以用服务发现请求确认 MCP 服务和 API Key 是否可用：
 
 ```bash
 curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
   -H "Authorization: Bearer ${COURSEDB_DEV_API_KEY}" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: server/discover" \
+  --data '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1.0"}}}}'
 ```
 
 常见结果：
 
-- `200`：MCP 初始化成功。
+- `200`：MCP 服务发现成功。
 - `401`：API Key 缺失、无效、过期或已撤销。
 - `410`：CourseDB MCP 全局开关关闭。
 - `503`：Developer API 暂停或关闭。
@@ -232,8 +234,20 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
 - `list_major_elective_courses`
 - `list_free_elective_courses`
 - `get_course_offerings`
+- `get_course_details`
+- `list_course_offering_sessions`
 
 工具只提供 CourseDB 中的事实数据。课程排序、历史课程排除、候选筛选和冲突检查由 Skill 完成。
+
+## Skill 2.0 数据与导出
+
+MCP 使用 `2026-07-28` 协议。请求携带协议版本、客户端能力和匹配的 HTTP 请求头。工具调用还需要 `Mcp-Name`。旧版初始化握手与会话不再支持。
+
+选修目录使用最近一个有分类信息的 Offering 学期。目标学期 session 的分类单独判断；分类冲突或缺失时，需求保持待确认。具体变体使用自己的学分，不能借用基础课程数据。多位讲师按关联行顺序展示已解析名称或原始姓名。
+
+批量 Offering 查询每门课最多返回 100 个 session。若 `sessionsTruncated` 为 true，从最后一条的 `{session,id}` 继续调用分页工具。分页失败、游标重复或数量变化时，保留已读数据并说明分析不完整。
+
+Timetable 导出保留 `version:2` 格式，条目 ID 使用实际 session ID。导出遵守时间、文本和数量限制，不静默截断。项目课与未知时间在正文标记，不能宣称完全无冲突。
 
 ## 安全与限制
 
@@ -255,3 +269,5 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
 - [MCP tool reference](plan-semester-courses/references/mcp-tools.md)
 - [Planning rules](plan-semester-courses/references/planning-rules.md)
 - [Timetable JSON format](plan-semester-courses/references/timetable-json.md)
+
+详细示例：[规划示例与异常处理](plan-semester-courses/references/planning-examples.md)。

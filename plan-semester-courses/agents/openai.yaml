@@ -1,4 +1,4 @@
 interface:
   display_name: "Plan Semester Courses"
-  short_description: "Use CourseDB MCP tools to plan a student's semester courses."
-  default_prompt: "Use $plan-semester-courses to ask for my program code, admission year, study year, target term, and prior completed or planned courses, then use Handbook, major-elective, Free Elective, and Offering data to draft a semester plan without duplicating earlier courses."
+  short_description: "Plan courses with current facts and paged CourseDB sessions."
+  default_prompt: "Use $plan-semester-courses with my program, cohort, target term, and course history to read Handbook requirements, confirm course details, page through Offering sessions, and export a provisional Timetable plan."
