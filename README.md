@@ -45,7 +45,7 @@ coursedb-timetable-planner-skill/
 需要准备：
 
 1. Node.js 18 或更高版本，用于运行 [`skills`](https://github.com/vercel-labs/skills) CLI。
-2. 支持 Agent Skills 和 MCP `2026-07-28` 协议的客户端。OpenCode 配置示例仅说明地址与鉴权，使用前需确认客户端支持该协议。
+2. 支持 Agent Skills 和 MCP `2026-07-28` 协议的客户端。本文使用 OpenCode 2.0.23。
 3. CourseDB Developer Access 和一个有效的 Developer API Key。
 4. CourseDB 管理后台已开启 MCP 服务。
 
@@ -92,18 +92,28 @@ npx skills add https://github.com/ecwu/coursedb-timetable-planner-skill \
 
 ### 2. 配置 CourseDB MCP
 
-`skills` CLI 只安装 Skill 文件，不会添加 MCP 地址或 API Key。请在项目根目录的 `opencode.json` 中配置 CourseDB MCP，或把相同配置合并到全局的 `~/.config/opencode/opencode.json`：
+`skills` CLI 只安装 Skill 文件，不会添加 MCP 地址或 API Key。请在项目根目录的 `opencode.json` 中配置 CourseDB MCP，或把相同配置合并到全局的 `~/.config/opencode/opencode.json`。
+
+本文使用 OpenCode V2 配置，已用 OpenCode 2.0.23 验证。OpenCode 默认发送旧版 `initialize` 握手。CourseDB 只接受 `2026-07-28`，因此必须显式设置 `protocol: "2026-07-28"`。
+
+服务器配置放在 `mcp.servers` 下。使用 `oauth: false` 关闭 OAuth 自动鉴权，使用 Developer API Key 鉴权。V2 用 `disabled: false` 启用连接，Skill 搜索目录使用 `skills` 字符串数组。
+
+保留已有的其他配置，加入以下 CourseDB 服务器配置：
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "coursedb": {
-      "type": "remote",
-      "url": "https://mis.bnbu.moe/api/mcp",
-      "enabled": true,
-      "headers": {
-        "Authorization": "Bearer {env:COURSEDB_DEV_API_KEY}"
+    "servers": {
+      "coursedb": {
+        "type": "remote",
+        "url": "https://mis.bnbu.moe/api/mcp",
+        "headers": {
+          "Authorization": "Bearer {env:COURSEDB_DEV_API_KEY}"
+        },
+        "protocol": "2026-07-28",
+        "oauth": false,
+        "disabled": false
       }
     }
   }
@@ -140,7 +150,7 @@ opencode
 
 ## 不使用 `skills` CLI
 
-如果希望保留仓库的本地 clone，可以让 OpenCode 直接扫描仓库根目录。注意 `skills` 的配置值是包含 `paths` 的对象，不是字符串数组：
+如果希望保留仓库的本地 clone，可以让 OpenCode 直接扫描仓库根目录。OpenCode V2 的 `skills` 配置使用字符串数组：
 
 ```bash
 git clone https://github.com/ecwu/coursedb-timetable-planner-skill.git \
@@ -152,26 +162,13 @@ git clone https://github.com/ecwu/coursedb-timetable-planner-skill.git \
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "skills": {
-    "paths": ["~/.config/opencode/coursedb-timetable-planner-skill"]
-  }
+  "skills": ["~/.config/opencode/coursedb-timetable-planner-skill"]
 }
 ```
 
-OpenCode 会递归发现其中的 `plan-semester-courses/SKILL.md`。也可以把路径直接写到 Skill 子目录：
+OpenCode 会递归发现其中的 `plan-semester-courses/SKILL.md`。搜索路径指向包含 Skill 子目录的仓库根目录，以保留 `plan-semester-courses` 这个 Skill ID。
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "skills": {
-    "paths": [
-      "~/.config/opencode/coursedb-timetable-planner-skill/plan-semester-courses"
-    ]
-  }
-}
-```
-
-如果 clone 就在当前项目中，可以使用相对于 `opencode.json` 的路径，例如 `"./coursedb-timetable-planner-skill"`。MCP 配置仍需按上一节单独添加。
+如果 clone 就在当前项目中，可以使用相对于 OpenCode 工作目录的路径，例如 `"./coursedb-timetable-planner-skill"`。MCP 配置仍需按上一节单独添加。
 
 ## 获取 CourseDB API Key
 
@@ -226,6 +223,18 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
 
 不要直接在浏览器中打开 MCP URL。MCP 客户端使用带认证信息的 POST JSON-RPC 请求。
 
+### OpenCode 协议错误
+
+如果 OpenCode 返回 `-32022`，且 `requested` 为 `2025-11-25`、`supported` 为 `["2026-07-28"]`，客户端仍在使用默认旧协议。检查 `mcp.servers.coursedb.protocol` 是否为 `"2026-07-28"`。
+
+如果请求仍使用 `initialize`，只修改请求里的版本字符串不能转换协议。新版使用 `server/discover` 和每次请求的协议元数据。OpenCode 会在设置 `protocol` 后生成对应的请求格式。
+
+保存配置后，重启 OpenCode 及其后台服务。在启动 OpenCode 的同一终端设置 `COURSEDB_DEV_API_KEY`。不要把密钥发到聊天或错误报告中。
+
+如果项目配置也定义了 `coursedb`，它会替换全局同名服务器配置。项目配置必须保留完整的 URL、`protocol`、`oauth` 和鉴权头。
+
+在设置密钥的终端运行 `opencode mcp list`，确认 CourseDB 显示为 `connected`。如果安装命令名是 `opencode2`，使用 `opencode2 mcp list`。
+
 ## MCP 工具
 
 当前 Skill 使用以下只读工具：
@@ -261,9 +270,9 @@ Timetable 导出保留 `version:2` 格式，条目 ID 使用实际 session ID。
 ## 相关文档
 
 - [`skills` CLI](https://github.com/vercel-labs/skills)
-- [OpenCode Skills](https://opencode.ai/docs/skills/)
-- [OpenCode MCP Servers](https://opencode.ai/docs/mcp-servers/)
-- [OpenCode Configuration](https://opencode.ai/docs/config/)
+- [OpenCode Skills](https://opencode.ai/v2/docs/skills/)
+- [OpenCode MCP Servers](https://opencode.ai/v2/docs/mcp-servers/)
+- [OpenCode Configuration](https://opencode.ai/v2/docs/config/)
 - [Agent Skills specification](https://agentskills.io/specification)
 - [Skill instructions](plan-semester-courses/SKILL.md)
 - [MCP tool reference](plan-semester-courses/references/mcp-tools.md)
