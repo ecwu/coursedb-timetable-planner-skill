@@ -117,7 +117,7 @@ Display Resolved Teacher, then Unresolved Teacher. Preserve the second row's unr
 
 ## Classification disagreement
 
-The major catalogue lists a course through `ME(CST)`. Its latest classified-term details confirm that token. The target session contains only `FE(ALL)`.
+A bound Handbook list contains a candidate course. Its latest classified-term details include `ME(CST)`. The target session contains only `FE(ALL)`.
 
 Keep the course available as an Offering candidate, but leave major-elective coverage pending. Do not replace target tokens with the latest-term tokens. Apply the same pending status if target tokens are empty.
 

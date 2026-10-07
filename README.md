@@ -30,7 +30,7 @@ coursedb-timetable-planner-skill/
 ## 功能
 
 - 根据专业、入学年份、Handbook 年级和学期读取培养方案要求。
-- 查询专业选修和 `FE(...)` Free Elective 候选课程。
+- 从 Handbook 关联清单读取专业候选课程，并查询 `FE(...)` Free Elective 候选课程。
 - 排除已修、在修或之前已规划的课程，避免重复推荐。
 - 补查具体课程的当前学分、双语名称、先修与分类学期。
 - 查询指定日历学期的 Offering、session、时间和地点，继续读取被截断的 session。
@@ -242,7 +242,6 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
 - `list_course_lists`
 - `list_course_list_courses`
 - `get_handbook_term_requirements`
-- `list_major_elective_courses`
 - `list_free_elective_courses`
 - `get_course_offerings`
 - `get_course_details`

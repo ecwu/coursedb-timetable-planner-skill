@@ -34,14 +34,15 @@ Record history separately as completed, enrolled, planned, failed, withdrawn/dro
 1. Call `get_handbook_term_requirements` for the exact program, cohort, and Handbook term. If the tool fails, report the failure. Do not interpret an error as an empty Handbook or substitute another cohort.
 2. Preserve each requirement's section, ID, type, `requiredUnits`, flexibility, pattern, notes, fixed course, and alternatives. Establish fixed `REQUIRED`/`CORE` anchors first.
 3. Use `courseLists.lists` returned by the Handbook query. Read the selected IDs with `list_course_list_courses`. If `courseLists.hasMore` is true, continue `list_course_lists` with `handbook.handbookId` and the returned page size. Follow the member pages while `hasMore` is true. Preserve list membership separately from requirement categories. Apply history exclusions before selecting candidates.
-4. For explicit ME or `FE(...)` patterns, use the classification catalogues when that evidence is needed. Explain any broader catalogue scope. Do not treat it as membership in the cohort list.
+4. For explicit ME patterns, read candidate classification through `get_course_details`. Compare target-session tokens separately. For an explicit `FE(...)` catalogue request, use `list_free_elective_courses`. Explain its broader scope.
 5. Build an exact candidate list. Use GE and observed code maps only when relevant. Query at most 50 codes per batch.
 6. Call `get_course_details` for missing course facts and for selected codes whose current units or classification need confirmation. Use each concrete variant's own facts.
 7. Call `get_course_offerings` for the explicit calendar term. If results are truncated, continue with `list_course_offering_sessions` as described in the tool reference.
 8. For a Handbook-fixed code with `NO_RECORD`, query every recorded concrete variant before finalizing. Query variant details as well. If no mapping exists, report the unresolved code.
 
 If the Handbook returns `courseLists.total: 0`, report that no school list is bound to that Handbook. Keep Handbook anchors and explicit alternatives available.
-If the student requests broader classification candidates, use the ME/FE catalogues and state the changed scope.
+For broader major candidates, use explicitly requested school lists and state their scope.
+For broader Free Elective candidates, use the exact FE catalogue requested by the student.
 Do not silently substitute another cohort.
 
 Do not use historical season counts as target-term availability.

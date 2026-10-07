@@ -103,13 +103,10 @@ A binding connects a whole Handbook to a list, rather than individual requiremen
 The optional season filter covers all years.
 For actual term availability, use `get_course_offerings` with a calendar year and season.
 
-## Elective catalogues
+## Free Elective catalogue
 
-Call `list_major_elective_courses` for an exact major code:
-
-```json
-{ "majorCode": "CST", "page": 1, "pageSize": 50 }
-```
+Major candidates come from the Handbook's bound course lists.
+Use `get_course_details` and target-term Offering tokens for their classification evidence.
 
 Call `list_free_elective_courses` for the exact code inside `FE(...)`:
 
@@ -117,15 +114,22 @@ Call `list_free_elective_courses` for the exact code inside `FE(...)`:
 { "subjectCode": "ALL", "page": 1, "pageSize": 50 }
 ```
 
-Both tools accept optional `courseCodePrefix` and `nameContains` literal filters. `page` ranges from 1 to 1000. `pageSize` defaults to 50 and cannot exceed 100.
+The tool accepts optional `courseCodePrefix` and `nameContains` literal filters.
+`page` ranges from 1 to 1000.
+`pageSize` defaults to 50 and cannot exceed 100.
 
-Both return shared course fields, `page`, `pageSize`, `total`, `hasMore`, and `classificationSource: "OFFERING_LATEST_CLASSIFIED_TERM"`. The major catalogue includes `majorCode` and `classification: "MAJOR_ELECTIVE"`. The free catalogue includes `subjectCode`, `classification: "FREE_ELECTIVE"`, and `classificationPattern`.
+It returns shared course fields, `page`, `pageSize`, `total`, `hasMore`, and `classificationSource: "OFFERING_LATEST_CLASSIFIED_TERM"`.
+It also returns `subjectCode`, `classification: "FREE_ELECTIVE"`, and `classificationPattern`.
 
-Follow all relevant pages while `hasMore` is true. If page limits or failures prevent completion, report incomplete candidate coverage.
+Follow all relevant pages while `hasMore` is true.
+If page limits or failures prevent completion, report incomplete candidate coverage.
 
-`FE(ALL)` matches that exact token. It does not combine every `FE(...)` catalogue. For multiple Handbook patterns, query each pattern and deduplicate course codes.
+`FE(ALL)` matches that exact token.
+It does not combine every `FE(...)` catalogue.
+For multiple Handbook patterns, query each pattern and deduplicate course codes.
 
-Catalogue entries do not expose the classification term or all type tokens. Retrieve course details when those facts are needed.
+Catalogue entries do not expose the classification term or all type tokens.
+Retrieve course details when those facts are needed.
 
 ## `get_course_details`
 

@@ -27,12 +27,14 @@ If a requirement has `alternatives`, keep the alternatives visible. Do not silen
 Treat a requirement as an elective slot when it is an `ELECTIVE` requirement without a fixed course, or when its course catalogue is represented by `coursePattern`.
 
 Use the course lists returned by the exact Handbook as the initial candidate pool.
-For explicit ME patterns, use `list_major_elective_courses` when classification evidence is needed.
-Preserve the scope difference between cohort lists and classification catalogues. The classification source is the latest classified Offering term, such as `ME(CST)`. Use the results as candidates. The classification does not establish permission under a specific cohort's Handbook.
+For explicit ME patterns, read each candidate's latest classification through `get_course_details`.
+Compare the target session's `typeTokens` separately.
+The latest classified Offering term can differ from the target term.
+Neither classification establishes academic permission under the Handbook.
 
 Choose only enough elective courses to satisfy the Handbook's stated `requiredUnits` or number of slots. If multiple courses satisfy the same slot, compare their descriptions, units, prerequisite text, Offering sessions, and the student's stated interests. Keep a small set of alternatives when the choice is subjective.
 
-Do not select the whole major-elective catalogue. Do not infer an elective count from the number of returned courses.
+Do not select the whole bound course list. Do not infer an elective count from the number of returned courses.
 
 ## 2a. Fill Free Electives
 
@@ -48,7 +50,7 @@ Treat a Handbook requirement as a Free Elective requirement when its exact `cour
 - A course's `FE(...)` classification is CourseDB evidence, but it does not validate prerequisites, exclusions, or the student's graduation eligibility.
 - If a course is classified as both `ME(...)` and `FE(...)`, preserve both facts and avoid double-counting it unless the Handbook or selection system explicitly permits that use.
 
-Do not use `list_major_elective_courses` as a substitute for an `FE(...)` query. A major-elective catalogue is not automatically a Free Elective catalogue.
+A major candidate from a bound list does not automatically satisfy an `FE(...)` requirement.
 
 ## 3. Add other courses last
 
