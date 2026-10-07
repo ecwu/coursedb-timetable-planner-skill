@@ -26,7 +26,9 @@ If a requirement has `alternatives`, keep the alternatives visible. Do not silen
 
 Treat a requirement as an elective slot when it is an `ELECTIVE` requirement without a fixed course, or when its course catalogue is represented by `coursePattern`.
 
-Use `list_major_elective_courses` with the resolved major code to obtain the candidate pool. The classification source is the latest classified Offering term, such as `ME(CST)`. Use the results as candidates. The classification does not establish permission under a specific cohort's Handbook.
+Use the course lists returned by the exact Handbook as the initial candidate pool.
+For explicit ME patterns, use `list_major_elective_courses` when classification evidence is needed.
+Preserve the scope difference between cohort lists and classification catalogues. The classification source is the latest classified Offering term, such as `ME(CST)`. Use the results as candidates. The classification does not establish permission under a specific cohort's Handbook.
 
 Choose only enough elective courses to satisfy the Handbook's stated `requiredUnits` or number of slots. If multiple courses satisfy the same slot, compare their descriptions, units, prerequisite text, Offering sessions, and the student's stated interests. Keep a small set of alternatives when the choice is subjective.
 
@@ -36,7 +38,9 @@ Do not select the whole major-elective catalogue. Do not infer an elective count
 
 Treat a Handbook requirement as a Free Elective requirement when its exact `coursePattern` is `FE(ALL)` or `FE(<subjectCode>)`, such as `FE(SAI)`.
 
-- Call `list_free_elective_courses` with the code inside the pattern: `ALL` for `FE(ALL)`, `SAI` for `FE(SAI)`, and so on.
+- Start with the lists returned by the Handbook and preserve their membership evidence.
+- For an explicit FE pattern, call `list_free_elective_courses` when classification evidence is needed.
+  Use the code inside the pattern: `ALL` for `FE(ALL)`, `SAI` for `FE(SAI)`, and so on.
 - Match the exact classification. `FE(ALL)` means the `FE(ALL)` catalogue; it is not a request to merge every `FE(...)` classification unless the Handbook explicitly provides multiple patterns.
 - Read all pages when `hasMore` is true. `courseCodePrefix` and `nameContains` are literal filters, not semantic search.
 - Use the returned courses as the candidate pool, then query their exact course codes with `get_course_offerings` for the target calendar term.

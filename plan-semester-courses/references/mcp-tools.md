@@ -46,11 +46,62 @@ Use the exact stored program code and admission cohort. Years range from 2000 to
 
 Handbook term codes are `1` Fall, `2` Winter, `3` Spring, and `4` Summer. They do not determine the student's year level or actual calendar year.
 
-The output includes `handbook` identity, program, cohort, duration, and total units, plus `studyTerm` and `sections`. Each section contains `sectionName` and `requirements`.
+The output includes `handbook` identity, program, cohort, duration, and total units, plus `studyTerm`, `sections`, and `courseLists`.
+Each section contains `sectionName` and `requirements`.
+
+`courseLists` contains the first page of school lists bound to that exact Handbook ID.
+It uses the `list_course_lists` response fields with `page: 1` and `pageSize: 50`.
+Read its list IDs with `list_course_list_courses`.
+If `courseLists.hasMore` is true, continue `list_course_lists` with `handbook.handbookId`, the next page, and `pageSize: 50`.
+Do not repeat discovery by program and cohort after a successful Handbook read.
+If `courseLists.total` is zero, the Handbook has no accessible bound school lists.
+Bindings cover the whole Handbook, rather than the requested study term or an individual requirement.
 
 Each requirement supplies `requirementId`, `requirementType`, `requiredUnits`, `isFlexible`, `coursePattern`, `notes`, `course`, and `alternatives`. Preserve these fields. A null course alone does not prove an elective slot. The course can also be unavailable to this read. Use the requirement's type and pattern.
 
 A missing active Handbook produces a tool error. Report that the request failed. Do not diagnose the cause from the generic error text.
+
+## Course list discovery
+
+After reading a Handbook, use its returned `courseLists` as the candidate-list source.
+For standalone discovery without a Handbook read, use `list_course_lists` with `programCode` and `cohortYear`.
+Read each selected list with `list_course_list_courses`.
+`list_course_lists` accepts optional `query`, `handbookId`, `programCode`, `cohortYear`, `courseCode`, `page`, and `pageSize`.
+`handbookId` must be a UUID and scopes results to one exact active Handbook.
+A missing or inactive Handbook ID returns an empty page.
+`query` matches literal list names in both languages.
+`courseCode` finds lists containing that exact visible course.
+It returns `lists`, `page`, `pageSize`, `total`, and `hasMore`.
+Each list supplies its ID, bilingual name and description, ISO `updatedAt`, visible `courseCount`, and active `handbooks`.
+Each binding supplies `handbookId`, `programCode`, `programName`, `cohortYear`, and nullable `faculty`.
+
+`list_course_list_courses` requires a UUID `listId` returned by a Handbook read or list discovery.
+It accepts optional `query`, `calendarSeason`, `page`, and `pageSize`.
+`query` matches literal course codes and names in both languages.
+It returns `recordStatus`, nullable `list`, `membershipSource: "COURSE_LIST"`, `seasonFilter`, `courses`, and pagination fields.
+Each course supplies `courseCode`, `courseName`, `units`, and nullable `sessionCount`.
+It orders courses by code, then ID.
+Hidden and versionless courses remain inaccessible.
+
+A missing or private list returns `NO_RECORD`, null metadata, empty courses, zero total, and `hasMore: false`.
+An accessible list returns `FOUND` even when the filtered page contains no courses.
+Without a season filter, `seasonFilter` and `sessionCount` are null.
+With one, `seasonFilter` contains `calendarSeason` and `yearScope: "ALL_YEARS"`.
+Each count covers the selected season across all V2 years.
+
+Both tools accept pages from 1 to 10000 and page sizes from 1 to 50.
+Defaults are page 1 and page size 20.
+Queries contain at most 255 characters.
+Program codes contain at most 50 characters, and course codes contain 1 to 16 characters.
+Cohort years range from 2000 to 2099.
+Follow relevant pages while `hasMore` is true.
+If totals change or a request fails, report incomplete coverage.
+Preserve list IDs, names, and active Handbook bindings as evidence.
+
+List membership and Offering classification are separate facts.
+A binding connects a whole Handbook to a list, rather than individual requirements.
+The optional season filter covers all years.
+For actual term availability, use `get_course_offerings` with a calendar year and season.
 
 ## Elective catalogues
 

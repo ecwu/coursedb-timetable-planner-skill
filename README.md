@@ -239,6 +239,8 @@ curl -i -X POST "https://mis.bnbu.moe/api/mcp" \
 
 当前 Skill 使用以下只读工具：
 
+- `list_course_lists`
+- `list_course_list_courses`
 - `get_handbook_term_requirements`
 - `list_major_elective_courses`
 - `list_free_elective_courses`
@@ -290,3 +292,13 @@ Timetable 导出保留 `version:2` 格式，条目 ID 使用实际 session ID。
 预览工具失败或不可用时，Skill 返回 JSON 供手动导入。完整 MCP 请求上限为 64 KiB，不会静默截断内容。临时内容使用 Redis，数据丢失时链接可能提前失效。
 
 上线前确认 Redis 容量和淘汰策略适合临时业务存储。观察创建、额度拒绝和保存失败的服务日志，不记录正文或链接 token。
+
+### 基于课程清单查课
+
+现有 `plan-semester-courses` Skill 先读取 Handbook 返回的 `courseLists`，再使用其 ID 查询课程清单成员、课程详情和目标学期 Offering。
+
+`get_handbook_term_requirements` 返回该 Handbook 直接绑定的首批清单，每页最多 50 个。超过一页时，使用返回的 `handbook.handbookId` 调用 `list_course_lists` 继续读取。Agent 无需再次按专业和入学年份搜索。
+
+`list_course_lists` 支持 Handbook ID、清单双语名称、专业代码、入学年份和具体课程代码筛选。`list_course_list_courses` 支持清单成员分页、课程代码与双语名称搜索，以及跨所有年份的季节筛选。两个工具每页最多返回 50 条。
+
+清单成员关系、Handbook 要求和 Offering 分类是独立事实。季节筛选及其 session 数量覆盖所有年份。查询某年实际开课时，仍需调用 `get_course_offerings`。没有绑定清单时，Skill 会说明缺失，不自动改用其他入学年份。
