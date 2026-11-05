@@ -76,6 +76,9 @@ When the student provides a pattern such as `WPEX2023800X`, replace `X` only wit
 
 ## Interpretation limits
 
+- This map resolves an exact code that returned `NO_RECORD`. It is not a catalogue. Enumerate a category pattern such as `UCHL1XX3` with `find_term_courses` instead.
+- Some variants are restricted sections. For example, `UCHL12038001` and `UCHL12138001` serve students with special health or mobility needs. Read the description before offering a variant.
+
 - The suffix is a concrete course-code variant, not a session identifier. Use `get_course_offerings` to retrieve its sessions.
 - Different variants of the same original code may have different names or classifications. Never select the lowest suffix automatically.
 - This table records what was observed in the supplied list; it does not prove that every listed variant is offered in every calendar term.

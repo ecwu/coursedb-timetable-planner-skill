@@ -19,6 +19,12 @@ The HTTP headers `MCP-Protocol-Version` and `Mcp-Method` must match the request.
 
 Read `structuredContent` first. If a client only exposes text content, parse its JSON. An `isError` result indicates a failed operation. For query tools, it does not mean `NO_RECORD` or an empty catalogue. HTTP `401`, `403`, `410`, `429`, and `503` indicate access, enablement, or rate-limit failures. Keep retrieved facts and explain the incomplete read.
 
+The built-in chat adapter uses `{status: "OK", data}` or `{status: "ERROR", code, instruction?}` instead of the MCP transport envelope.
+Read successful facts from `data`.
+Built-in chat loads skills with `load_skill` and their references with `read_skill_reference`.
+If reference loading fails, stop dependent queries and report that failure.
+Never replace failed reads with invented courses, times, or locations.
+
 These tools do not read a student's private history or Planner. A developer key identifies the integration, not the student.
 
 ## Shared course fields
@@ -30,6 +36,27 @@ Handbook courses, alternatives, and elective catalogue entries use these fields:
 - `prerequisiteText`, `exclusionText`, and `description`. These can be null.
 
 `get_course_details` returns the same fields plus `classification`. Offering results contain course names at course level, not inside each session. They do not supply units.
+
+Course details contain no sessions and accept no target calendar term.
+Only successful Offering reads establish target-term session evidence.
+If a built-in chat error includes `recovery`, call its tool with its arguments before continuing the dependent work.
+`TOOL_RESULT_TOO_LARGE` preserves no data from the failed response.
+For an oversized Offering batch, use `list_course_offering_sessions` for each requested code with `pageSize: 5`.
+Start without a cursor, then follow successful page cursors.
+If a page is too large, reduce its size and preserve the original cursor.
+`TOOL_BUDGET_EXHAUSTED` requires stopping further reads in that turn.
+Report unresolved requirements instead of retrying smaller pages after this error.
+
+## Course and Handbook lookups
+
+These read-only tools answer questions outside a semester plan. Planning uses them only when needed.
+
+- `search_courses` `{query, limit?}` searches all visible current courses by literal code, code prefix, or English or Chinese name, regardless of term. Use it to resolve a named course to an exact code.
+- `get_course_overview` `{courseCodes}` takes up to 10 exact codes. It returns public Review counts and averages (A=4 to F=0; null without Reviews) and the all-years Offering history: terms per season, the latest term, and up to 8 recent terms with session counts. History is a pattern, not target-term evidence.
+- `get_course_reviews` `{courseCode, pageSize?, cursor?}` returns the newest visible Review excerpts and grades when the signed-in user has Review access. `access: "CONTRIBUTION_REQUIRED"` returns no Reviews. Follow `nextCursor`. It requires a user principal.
+- `search_lecturers` `{query, limit?}` returns lecturers whose name contains the query, with visible courses they taught or were reviewed for.
+- `find_handbooks` `{query?, cohortYear?, page?, pageSize?}` lists active Handbooks with program code, name, cohort, duration, and total units.
+- `get_handbook_overview` `{programCode, cohortYear}` returns every year and term of one active Handbook in compact form. Use `get_handbook_term_requirements` for one term's full course facts and bound lists.
 
 ## `get_handbook_term_requirements`
 
@@ -45,6 +72,7 @@ Handbook courses, alternatives, and elective catalogue entries use these fields:
 Use the exact stored program code and admission cohort. Years range from 2000 to 2099. `studyYear` ranges from 1 to 4.
 
 Handbook term codes are `1` Fall, `2` Winter, `3` Spring, and `4` Summer. They do not determine the student's year level or actual calendar year.
+Derive these arguments from the student's admission year and target term; in built-in chat, read them from the calendar context table. Never ask the student for them.
 
 The output includes `handbook` identity, program, cohort, duration, and total units, plus `studyTerm`, `sections`, and `courseLists`.
 Each section contains `sectionName` and `requirements`.
@@ -131,6 +159,31 @@ For multiple Handbook patterns, query each pattern and deduplicate course codes.
 Catalogue entries do not expose the classification term or all type tokens.
 Retrieve course details when those facts are needed.
 
+## `find_term_courses`
+
+```json
+{
+  "calendarYear": 2026,
+  "calendarSeason": "FALL",
+  "courseCodePattern": "UCHL1XX3",
+  "page": 1,
+  "pageSize": 15
+}
+```
+
+Lists visible courses with at least one session in the exact calendar term, ordered by course code.
+Provide at least one filter:
+
+- `courseCodePrefix`: literal prefix, for example `UCHL` or `COMP3`.
+- `courseCodePattern`: Handbook pattern; after the subject letters, `X` means one digit. It matches whole codes only.
+- `typeToken`: exact session classification token, for example `UCHL(ALL)`, `GFQR(ALL)`, `GFHC(ALL)`, `ME(CST)`, or `FE(ALL)`.
+- `nameContains`: literal English or Chinese name fragment.
+
+`pageSize` defaults to 15 and cannot exceed 25. If a page is too large, follow the returned recovery arguments.
+Each course has `courseCode`, `courseName`, `units`, `sessionCount`, `typeTokens`, and a description shortened to 240 characters.
+With `typeToken`, `sessionCount` counts only sessions carrying that token. `typeTokens` lists every token the course carries in the term.
+The result proves target-term availability but not eligibility. Read sessions with `get_course_offerings` before assigning them.
+
 ## `get_course_details`
 
 ```json
@@ -211,7 +264,16 @@ For mapped codes, read [course-code-expansion-map.md](course-code-expansion-map.
 
 ## `create_timetable_preview`
 
-After selecting the primary recommendation, build the Timetable object under [the JSON rules](timetable-json.md). Call the tool with `{requestId, name, data}`. Generate a UUID for `requestId`. Reuse it with identical arguments for a retry.
+After selecting the primary recommendation, build the Timetable object under [the JSON rules](timetable-json.md).
+Include selected provisional electives even when history, prerequisites, or requirement coverage remain unverified.
+Preview creation requires importable timetable data, not confirmed academic eligibility.
+Keep academic uncertainties in the explanation. Call the tool with `{requestId, name, data}`. Generate a UUID for `requestId`. Reuse it with identical arguments for a retry.
+
+Built-in chat rejects entries whose session, course, schedule, or time slots lack successful Offering evidence.
+`PREVIEW_EVIDENCE_REQUIRED` asks for a target-term Offering read or a faithful copy of the returned fields.
+Successful chat previews include `planningSummary` with actual included codes and unresolved exact Handbook anchors.
+Describe omitted anchors as unresolved, not selected or covered.
+This summary does not establish elective fulfillment or academic eligibility.
 
 The tool returns `structuredContent` with `previewUrl`, `expiresAt`, and `remaining`. The link works for 24 hours after creation. Anyone with the link can preview it. A signed-in viewer can save a personal copy and then edit that copy. The tool does not save a personal timetable or enroll courses.
 

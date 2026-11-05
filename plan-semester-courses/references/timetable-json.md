@@ -40,12 +40,12 @@ The example ID represents a selected session. In a real plan, copy the actual re
 
 ## Field mapping
 
-- `id`: selected session ID. Keep each ID unique and select only one session per course.
+- `id`: copy the selected session ID verbatim. Never construct it from a course code or class label. Keep each ID unique and select only one session per course.
 - `label`: course code, session, and English name when available. Chinese names can appear in the explanation or label.
 - `courseCode`: exact concrete code, including any observed variant suffix.
 - `courseNameEn`: course-level Offering `courseName.en`, then current course details, then Handbook/catalogue. Omit it only if all names are unavailable.
 - `schedule`: copy the session string. Use `""` for null. Do not replace raw schedule text with an invented schedule.
-- `timeSlots`: copy `sequence`, `day`, minute values, raw time, and location fields from the selected session.
+- `timeSlots`: copy the complete returned array without changing values. Preserve every `null`, including `rawTime`, `location`, and `locations`. Do not fill a null raw time from the schedule or minute values. A formatted equivalent is not the original evidence.
 - `colorIndex`: use integer palette indices in entry order. CourseDB currently has eight colors, so wrap indices modulo 8.
 
 The import has no `courseNameZh`, lecturer, classification, units, requirement, or warning fields. Keep these facts in the explanation.
@@ -79,6 +79,19 @@ Do not export `NO_RECORD` courses or alternative sessions. If a recommended sess
 
 A `FOUND` project session with no fixed slots can use `timeSlots: []`. Preserve its schedule if present. For a null schedule, use `""`. Explain project/supervisor arrangements outside the JSON.
 
-If student history is missing, export verified fixed-anchor sessions only. If paging is incomplete, identify the export as provisional. Do not claim that all alternatives were evaluated.
+The same export rule applies to any real session with unknown times.
+Keep an importable selected session even when its schedule is null.
+Do not create an entry from course details without a returned Offering session ID.
+Keep such courses in the unresolved list and outside the selected-course count.
+Compare the preview's included course codes with the final recommendation before describing coverage.
+In built-in chat, use the returned `planningSummary` for this comparison.
+The summary identifies included and unresolved courses. It never certifies academic eligibility or elective fulfillment.
+An expiry ending in `Z` is UTC. Add eight hours for Asia/Shanghai, or preserve the explicit UTC value and label its timezone.
+
+If student history is missing, export all selected sessions, including provisional electives.
+Keep unverified history, prerequisites, and requirement coverage outside the JSON.
+These academic uncertainties do not block JSON export or preview creation.
+If paging is incomplete, identify the export as provisional.
+Do not claim that all alternatives were evaluated.
 
 For multiple plans, export the primary recommendation unless the student requests each plan. Use valid JSON without comments or trailing commas.

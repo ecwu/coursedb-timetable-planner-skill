@@ -30,6 +30,7 @@ Important interpretation rules:
 - Level 3 requires one course from any one of the four capstone categories.
 - The caret-marked categories on the source page are selection pools. The listed courses may be offered by other Faculties/School, with the GE Committee overseeing course planning and development.
 - A major programme may decide to count a Level 3 project/course toward a major, minor, or concentration, but not toward Free Electives. If it is double-counted outside GE, the student must take another course to make up the required GE units or graduation units.
+- To find which courses in a category are offered in the target term, call `find_term_courses` with the category token, such as `GFQR(ALL)` for Quantitative Reasoning or `GFHC(ALL)` for History and Civilization, or with the code prefix shown below.
 - Treat the catalogue below as candidate metadata. A course is usable for the student's term only after its exact code or known CourseDB variant has an Offering record for the target calendar term.
 
 ## Level 1 Foundational Courses

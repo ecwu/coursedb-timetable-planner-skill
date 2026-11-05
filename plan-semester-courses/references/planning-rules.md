@@ -2,14 +2,17 @@
 
 Apply these rules after loading the Handbook and before recommending sessions.
 
-## 0. Establish historical exclusions first
+## 0. Apply available historical exclusions
 
-Before selecting from any ME/FE catalogue, read `references/history-and-exclusions.md` and establish the student's completed, earlier planned/enrolled, reattemptable, and uncertain course sets.
+Before selecting from any ME/FE catalogue, read `references/history-and-exclusions.md`.
+Build history sets from available evidence.
+If history is missing, continue with the available facts and disclose the missing exclusions once.
 
 - Exclude completed courses before judging their relevance, topic fit, classification, or Offering. A course can be both an earlier major-required course and a current `FE(ALL)` candidate; its history still makes it unavailable for the new plan.
 - Exclude earlier planned/enrolled courses by default when the earlier plan precedes the target term. Keep this separate from proof of completion.
 - Do not hard-exclude failed, withdrawn, or dropped courses without the student's confirmation.
-- If the student has not provided history and the target contains elective slots, do not turn an elective catalogue entry into a final recommendation or a fully confirmed timetable JSON.
+- If history is missing, include selected electives in the draft JSON and preview. Mention the missing history once in the final caveats instead of labeling each course.
+- Keep schedule selection separate from confirmed requirement coverage and academic eligibility.
 
 ## 1. Anchor major courses first
 
@@ -114,6 +117,7 @@ For a follow-up conflict question, preserve the selected/provisional anchor sess
 - Do not turn a system workload suggestion into an institutional rule.
 - Present `prerequisiteText` and `exclusionText` as source text.
 - Do not claim that the student satisfies prerequisites unless a separate validated service provides that result.
+- If the student asks to ignore prerequisites, continue planning and preview creation with prerequisite satisfaction explicitly unverified.
 - If a course has missing units or unclear requirement mapping, flag it instead of silently filling the gap.
 - A course classified as `ME(<programCode>)` is a major-elective candidate, not automatic proof that it satisfies a Free Elective, GE, WPEX, or other Handbook category.
 - A Handbook-fixed course/category code with `NO_RECORD` must first be checked against `course-code-expansion-map.md`. Query only the concrete variants recorded for that original code before finalizing the plan. If no mapping exists, do not force an `800X` expansion or report the course as definitively unavailable. Do not send a placeholder literally. Do not automatically expand an unselected elective catalogue candidate.

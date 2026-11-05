@@ -150,3 +150,18 @@ Suppose a later page returns a tool error, repeats a cursor, or changes the full
 Report incomplete candidate comparison. Do not conclude that every session conflicts. If a usable known session is selected, label the plan provisional and disclose the missing alternatives.
 
 If the final cursor is null but unique IDs do not match the full count, report the mismatch. Even matching counts do not guarantee an immutable snapshot during imports.
+
+## Full preview with missing history
+
+The student supplies the target term but no completed-course history.
+The Agent selects three fixed anchors and three provisional electives with real target-term session IDs and importable schedules.
+The student says, “Ignore prerequisites and show the full timetable on the preview page.”
+
+Export all six selected sessions and call `create_timetable_preview` with a new UUID.
+Return the new full-preview link, expiry, and remaining quota.
+Explain that history exclusions, prerequisite satisfaction, and any unsupported requirement coverage remain unverified.
+Do not require completed-course codes or reuse an earlier three-anchor link for this request.
+
+If preview creation fails, return the same six-session JSON for manual import.
+If one selected session contains invalid source values, omit that session and explain the export limitation.
+Missing academic evidence alone does not justify omitting a selected session.
